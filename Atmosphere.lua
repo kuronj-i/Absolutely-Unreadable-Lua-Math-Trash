@@ -1,0 +1,659 @@
+--[[
+	Made by Pulsarnova (A.k.a. BangoutBoy)
+	edited by @vietnamricefarmerz / @_kuronjie
+	Version 66
+]]
+
+local rgb = Color3.fromRGB
+local AtmoSphere = {
+	-- Performance
+	MaxRefreshRate = 1/60,
+	LastUpdate = os.clock(),
+
+	-- Colors
+	AtmosphereColor = Color3.fromRGB(115, 180, 255),
+	AtmosphereReflectionColor = Color3.fromRGB(42, 133, 198),
+	AtmosphereSunsetColor = Color3.fromRGB(171, 213, 255),
+	AtmosphereExtinctionColor = Color3.fromRGB(255, 100, 0),
+	AstronomicalTwilightAtmosphericExtinctionColor = Color3.fromRGB(60, 60, 60),
+	InnerAtmosphericExtinctionColor = Color3.fromRGB(255, 85, 0),
+	NauticalInnerAtmosphericExtinctionColor = Color3.fromRGB(150, 125, 50),
+	NauticalTwilightAtmosphericExtinctionColor = Color3.fromRGB(255, 100, 50),
+	SunsideAtmosphericExtinctionColor = Color3.fromRGB(255, 20, 0),
+	BeltOfVenusColor = Color3.fromRGB(0, 13, 25),
+	DistantSurfaceColor = Color3.fromRGB(45, 118, 255),
+
+	-- Airglow
+	EnableAirglow = true,
+	AirglowColor = Color3.fromRGB(0, 255, 0),
+	AirglowTransparency = 0.93,
+
+	-- Lighting Changes
+	EnableEnvironmentalLightingChanges = true,
+	DaytimeSunlightColor = Color3.fromRGB(255, 255, 255),
+	NightBrightness = 0,
+	OutdoorAmbientBrightnessDay = 128,
+	OutdoorAmbientBrightnessNight = 48,
+	SunlightBrightness = 5,
+	SunriseSunlightColor = Color3.fromRGB(255, 140, 20),
+
+	-- Moon
+	EnableMoon = true,
+	MoonApparentDiameter = 31.6,
+	MoonTexture = "rbxassetid://10855868393",
+
+	-- Sun
+	EnableSun = true,
+	SunApparentDiameter = 31.983,
+	SunAtmosphericExtinctionColor = Color3.fromRGB(255, 140, 50),
+	SunAtmosphericExtinctionIntermediateColor = Color3.fromRGB(255, 200, 80),
+	SunBrightness = 1,
+	SunTemp = 5505,
+	SunshineTexture = "rbxassetid://6196665106",
+	ThreeDimensionalSunAtmosphericExtinctionColor = Color3.fromRGB(255, 20, 0),
+	EnableSunsetScattering = true,
+
+	-- Planet
+	PlanetTexture = "rbxassetid://5079554320",
+	PlanetTextureNight = "rbxassetid://5088333693",
+	PlanetTransparency = 0.421,
+	AltitudeOffset = 0,
+	Scale = 2.3,
+	
+	-- Ground Atmosphere
+	EnableGroundAtmosphere = true,
+	GroundAtmosphereTransparency = 0.8,
+
+	-- Fog
+	FogEndRatio = 1,
+	
+	-- Data
+	AtmosphereMetadata = {},
+}
+
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+local Camera = workspace.Camera
+
+local Player = game:GetService("Players").LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+-- Ensures that the player to script connection doesn't glitch!
+Player.CharacterAdded:Connect(function(Char)
+	Character = Char
+	Humanoid = Char:WaitForChild("Humanoid")
+	HumanoidRootPart = Char:WaitForChild("HumanoidRootPart")
+end)
+
+for _, v in pairs(Lighting:GetDescendants())do
+	if v.ClassName == "Atmosphere" then
+		v:Destroy()
+	end
+end
+
+-- // helper functions
+function AtmoSphere:GetMeta()
+	return self.AtmosphereMetadata
+end
+
+function AtmoSphere:GetScale()
+	return self.Scale
+end
+
+-- // Fetch
+local ScaleFactor = AtmoSphere:GetScale() * -1
+local meta = AtmoSphere:GetMeta()
+local x
+
+function AtmoSphere:Connect(funcName: string, event: RBXScriptSignal): RBXScriptConnection
+	return event:Connect(function(...) return self[funcName](self, ...) end)
+end
+
+function AtmoSphere:Init()
+	if self.Initialized then
+		return
+	end
+	self.Initialized = true
+	
+	-- Atmosphere mdoel
+	meta.AtmosphereModel = Instance.new("Model", workspace)
+	meta.AtmosphereModel.Name = "Atmosphere"
+	
+	-- Atmosphere
+	meta.Atmosphere = Instance.new("Part", meta.AtmosphereModel)
+	meta.Atmosphere.CastShadow = false
+	meta.Atmosphere.CanCollide = false
+	meta.Atmosphere.Anchored = true
+	meta.Atmosphere.Material = "Fabric"
+	meta.Atmosphere.Name = "Atmosphere"
+	meta.Atmosphere.Size = Vector3.new(1, 1, 1)
+	meta.Atmosphere.Orientation = Vector3.new(0, -90, 0)
+	meta.Atmosphere.Position = Camera.CFrame.Position
+	meta.Atmosphere.Color = Color3.new(0,0,0)
+	meta.Atmosphere.Transparency = 0
+	
+	-- Distant surface
+	meta.DistantSurface = Instance.new("Part", meta.AtmosphereModel)
+	meta.DistantSurface.Size = Vector3.new(1, 1, 1)
+	meta.DistantSurface.Color = Color3.new(33/255, 84/255, 185/255)
+	meta.DistantSurface.Name = "DistantSurface"
+	meta.DistantSurface.CanCollide = false
+	meta.DistantSurface.Orientation = Vector3.new(0, -90, 0)
+	meta.DistantSurface.CastShadow = false
+	meta.DistantSurface.Anchored = true
+	meta.DistantSurface.Material = "SmoothPlastic"
+	
+	-- distant surface mesh
+	meta.SurfaceMesh = Instance.new("FileMesh", meta.DistantSurface)
+	meta.SurfaceMesh.MeshId = "rbxassetid://452341386"
+	meta.SurfaceMesh.Scale = Vector3.new(700, 1000, 700)
+	
+	-- Atmosphere mesh
+	meta.Mesh = Instance.new("FileMesh", meta.Atmosphere)
+	meta.Mesh.MeshId = "rbxassetid://5077225120"
+	meta.Mesh.Scale = Vector3.new(7600, 3000, 7600)
+	meta.Mesh.TextureId = "http://www.roblox.com/asset/?ID=2013298"
+	
+	-- Sky
+	meta.Sky = Instance.new("Sky", Lighting)
+	meta.Sky.SkyboxBk = "http://www.roblox.com/asset/?ID=2013298"
+	meta.Sky.SkyboxDn = "http://www.roblox.com/asset/?ID=2013298"
+	meta.Sky.SkyboxFt = "http://www.roblox.com/asset/?ID=2013298"
+	meta.Sky.SkyboxLf = "http://www.roblox.com/asset/?ID=2013298"
+	meta.Sky.SkyboxRt = "http://www.roblox.com/asset/?ID=2013298"
+	meta.Sky.SkyboxUp = "http://www.roblox.com/asset/?ID=2013298"
+	meta.Sky.MoonAngularSize = 0.57
+	meta.Sky.SunAngularSize = 1.44
+	
+	-- Earth
+	meta.Earth = Instance.new("Part", meta.AtmosphereModel)
+	meta.Earth.Anchored = true
+	meta.Earth.Name = "EarthSurface"
+	meta.Earth.CanCollide = false
+	meta.Earth.Size = Vector3.new(1,1,1)
+	meta.Earth.Color = Color3.new(33/255, 84/255, 185/255)
+	meta.Earth.CastShadow = false
+	meta.Earth.Material = "ForceField"
+	meta.Earth.Transparency = 0
+	
+	meta.EarthMesh = Instance.new("FileMesh", meta.Earth)
+	meta.EarthMesh.MeshId = "rbxassetid://5276376752"
+	meta.EarthMesh.TextureId = "rbxassetid://2013298"
+	meta.EarthMesh.VertexColor = Vector3.new((115/255)*2, (152/255)*2, 2)
+	
+	meta.EarthTexture = Instance.new("Decal", meta.Earth)
+	meta.EarthTexture.Texture = script.Customize.PlanetTexture.Value
+	
+	-- earth terminator
+	meta.EarthTerminator = Instance.new("Part", meta.AtmosphereModel)
+	meta.EarthTerminator.Anchored = true
+	meta.EarthTerminator.Name = "EarthTerminator"
+	meta.EarthTerminator.CanCollide = false
+	meta.EarthTerminator.Size = Vector3.new(1,1,1)
+	meta.EarthTerminator.Color = Color3.new(33/255, 84/255, 185/255)
+	meta.EarthTerminator.Transparency = 1
+	meta.EarthTerminator.CastShadow = false
+	
+	meta.EarthTerminatorMesh = Instance.new("FileMesh", meta.EarthTerminator)
+	meta.EarthTerminatorMesh.MeshId = "rbxassetid://5276376752"
+	meta.EarthTerminatorTexture = Instance.new("Decal", meta.EarthTerminator)
+	meta.EarthTerminatorTexture.Texture = "rbxassetid://5410829227"
+	
+	-- earth terminator 2
+	meta.EarthTerminator2 = Instance.new("Part", meta.AtmosphereModel)
+	meta.EarthTerminator2.Anchored = true
+	meta.EarthTerminator2.Name = "EarthTerminator2"
+	meta.EarthTerminator2.CanCollide = false
+	meta.EarthTerminator2.Size = Vector3.new(1,1,1)
+	meta.EarthTerminator2.Color = Color3.new(33/255, 84/255, 185/255)
+	meta.EarthTerminator2.Transparency = 1
+	meta.EarthTerminator2.CastShadow = false
+
+	meta.EarthTerminatorMesh2 = Instance.new("FileMesh", meta.EarthTerminator2)
+	meta.EarthTerminatorMesh2.MeshId = "rbxassetid://5276376752"
+	meta.EarthTerminatorTexture2 = Instance.new("Decal", meta.EarthTerminator2)
+	meta.EarthTerminatorTexture2.Texture = "rbxassetid://5410829627"
+	
+	-- extinctions
+	meta.Extinction = script.AtmosphericExtinction
+	meta.Extinction.Parent = meta.AtmosphereModel
+	
+	meta.ExtinctionSunset = script.AtmosphericExtinctionSunset
+	meta.ExtinctionSunset.Parent = meta.AtmosphereModel
+	
+	-- airglow
+	meta.AirglowLayer = Instance.new("Part", meta.AtmosphereModel)
+	meta.AirglowLayer.Anchored = true
+	meta.AirglowLayer.Name = "Airglow"
+	meta.AirglowLayer.CanCollide = false
+	meta.AirglowLayer.Size = Vector3.new(1,1,1)
+	meta.AirglowLayer.Color = Color3.new(58/255, 125/255, 21/255)
+	meta.AirglowLayer.Orientation = Vector3.new(0,0,0)
+	meta.AirglowLayer.CastShadow = false
+	meta.AirglowLayer.Material = "ForceField"
+	meta.AirglowLayer.Transparency = script.Customize.EnableAirglow.AirglowTransparency.Value
+	
+	meta.AirglowMesh = Instance.new("FileMesh", meta.AirglowLayer)
+	meta.AirglowMesh.MeshId = "rbxassetid://1886703108"
+	meta.AirglowMesh.TextureId = "rbxassetid://2013298"
+	meta.AirglowMesh.VertexColor = Vector3.new(0,1,0)
+	
+	-- bottom atmosphere
+	meta.BottomAtmosphere = Instance.new("Part", meta.AtmosphereModel)
+	meta.BottomAtmosphere.Anchored = true
+	meta.BottomAtmosphere.Name = "BottomAtmosphere"
+	meta.BottomAtmosphere.CanCollide = false
+	meta.BottomAtmosphere.Size = Vector3.new(1, 1, 1)
+	meta.BottomAtmosphere.Color = Color3.new(33/255, 84/255, 185/255)
+	meta.BottomAtmosphere.Orientation = Vector3.new(0,90,-90)
+	meta.BottomAtmosphere.CastShadow = false
+	meta.BottomAtmosphere.Material = "ForceField"
+	meta.BottomAtmosphere.Transparency = 0.6
+	
+	meta.BottomAtmosphereMesh = Instance.new("FileMesh", meta.BottomAtmosphere)
+	meta.BottomAtmosphereMesh.MeshId = "rbxassetid://5276376752"
+	meta.BottomAtmosphereMesh.TextureId = "rbxassetid://2013298"
+	meta.BottomAtmosphereMesh.VertexColor = Vector3.new((115/255)*2,(152/255)*2,2)
+	meta.BottomAtmosphereMesh.Scale = Vector3.new(400,3000,3000)
+	
+	-- lighting
+	Lighting.EnvironmentDiffuseScale = 0
+	self.LightEmissionEquation = 1
+	self.OutdoorAmbientBrightnessEquation = 128
+	
+	-- fog
+	Lighting.FogColor = Color3.new(115/255, 152/255, 255/255)
+	Lighting.FogEnd = 100000
+	Lighting.FogStart = 0
+	self.FogEndRatio = 1
+	
+	-- variables
+	self.EarthPositionEquation = 1
+	self.EarthMeshEquation = 100000
+	self.EarthTransparency = self.PlanetTransparency
+	
+	-- extinction
+	self.ExtinctionTransparencyMultiplier = 1
+	self.ExtinctionTransparencyEquation = 0
+	self.ExtinctionColorEquation = 255
+	self.ExtinctionWidthEquation = 40000
+	self.ExtinctionOrientationEquation = 81
+	self.ShowTerminator = 1
+	
+	-- misc
+	self.AirglowTransparency = 0
+	self.HorizonElevationSunsetDifference10 = 10
+	self.AtmosphereApparentHeight = 5.5
+	
+	-- sun
+	self.SunBrightness = 5
+	self.SunColor = Color3.fromRGB(255, 255, 255)
+	self.SunOffset = Vector2.new(0, 0)
+
+	-- clocktime & axial tilt
+	self.InitialTime = Lighting.ClockTime
+	self.InitialGL = Lighting.GeographicLatitude
+	
+	-- clock
+	self.FindServerClockTime = workspace:FindFirstChild("ServerClockTime")
+	self.ClockTimeExists = false
+	if self.FindServerClockTime then
+		self.ClockTimeExists = true
+	else
+		self.ClockTimeExists = false
+	end
+	if self.ClockTimeExists then
+		self.InitialTime = workspace.ServerClockTime.Value % 24
+	else
+		self.InitialTime = Lighting.ClockTime
+	end
+	
+	-- sun
+	meta.Sun3D = script.Sun3D
+	meta.Sun3D.Parent = meta.AtmosphereModel
+	meta.BottomAtmosphereDarkness = Instance.new("Decal", meta.BottomAtmosphere)
+	meta.BottomAtmosphereDarkness.Texture = "rbxassetid://7983012824"
+	meta.Sun3D.Transparency = 0.011
+	
+	self:InitSun()
+	self:Resume()
+end
+
+function AtmoSphere:Pause()
+	if self.UpdateConnection then
+		self.UpdateConnection:Disconnect()
+		self.UpdateConnection = nil
+	end
+	RunService:UnbindFromRenderStep("Sunshine")
+end
+
+function AtmoSphere:Resume()
+	if self.Running then
+		return
+	end
+	self.Running = true
+	--self.UpdateConnection = self:Connect("Update", RunService.Heartbeat)
+	RunService:BindToRenderStep("Sunshine", Enum.RenderPriority.Last.Value, function(deltaTime)
+		self:UpdateSun(deltaTime)
+	end)
+end
+
+-- sun obj
+function AtmoSphere:InitSun()
+	-- sun texture gui
+	meta.SunTextureGui = Instance.new("ScreenGui", Player.PlayerGui)
+	meta.SunTextureGui.DisplayOrder = -1 
+	meta.SunTextureGui.Name = "Sun"
+
+	meta.SunTexture = Instance.new("ImageLabel", meta.SunTextureGui)
+	meta.SunTexture.Image = self.SunshineTexture
+	meta.SunTexture.BackgroundTransparency = 1
+	meta.SunTexture.Size = UDim2.new(0,1000, 0, 1000)
+	meta.SunTexture.AnchorPoint = Vector2.new(0.5,0.5)
+	meta.SunTexture.ZIndex = 1
+	
+	meta.SunTexture2 = Instance.new("ImageLabel", meta.SunTextureGui)
+	meta.SunTexture2.Image = "rbxassetid://5200654205"
+	meta.SunTexture2.BackgroundTransparency = 1
+	meta.SunTexture2.Size = UDim2.new(0,(2100/Camera.FieldOfView),0,(2100/Camera.FieldOfView))
+	meta.SunTexture2.AnchorPoint = Vector2.new(0.5,0.5)
+	meta.SunTexture2.ZIndex = 2
+	
+	meta.SunTexture3 = meta.SunTexture:Clone()
+	meta.SunTexture3.Parent = meta.SunTextureGui
+	
+	self.IsObstructed = false
+	-- static variables
+	self.SunOffset = Vector2.new(0, 0)
+	if not x then
+		x = (Camera.CFrame.Y + self.AltitudeOffset) * ScaleFactor
+	end
+	self.SunApparentDiameterRatio = self.SunApparentDiameter / 31.983
+end
+
+function AtmoSphere:UpdateSun(deltaTime: number)
+	--[[
+	RunService:UnbindFromRenderStep("Sunshine")
+	RunService:BindToRenderStep("Sunshine", Enum.RenderPriority.Last.Value, function()
+	]]
+	-- throttle
+	local now = os.clock()
+	if (now - self.LastUpdate) + (1 / math.random(60, 120)) <= deltaTime * 3 + self.MaxRefreshRate then
+		return
+	end
+	self.LastUpdate = now
+
+	if self.EnableSun then
+		meta.SunTextureGui.Enabled = true
+		meta.Sky.SunTextureId = "rbxasset://sky/sun.jpg"
+	else
+		meta.SunTextureGui.Enabled = false
+		meta.Sky.SunTextureId = ""
+	end
+	if not x then
+		x = (Camera.CFrame.Y + self.AltitudeOffset) * ScaleFactor
+	end
+	local AltitudeSunTransparencyFadeRate = math.clamp(-0.00000133333333333 * x + 0.75666666666666, 0.55, 0.75)
+	local ignore = {}
+	-- sun cframe
+	self.SunDirectionV = Lighting:GetSunDirection()
+	local sunPosition = Camera.CFrame.Position + self.SunDirectionV * 999
+	
+	-- screen & camera
+	local screenPosition, isVisible = Camera:WorldToScreenPoint(sunPosition)
+	local CamToSun = Ray.new(Camera.CFrame.Position, self.SunDirectionV * 999)
+	local CamZoomDistance = (Camera.Focus.Position - Camera.CFrame.Position).Magnitude
+	self.CamToSunDirection = (self.SunDirectionV * 999) - Camera.CFrame.LookVector
+	self.HorizonElevation = -math.deg(math.acos(20925656.2/(20925656.2+x)))
+	self.SunElevation = math.deg(
+		math.atan((self.CamToSunDirection.y)
+			/math.sqrt(self.CamToSunDirection.x^2+self.CamToSunDirection.z^2)
+		))
+	self.HorizonElevationSunsetDifference = self.SunElevation-self.HorizonElevation
+	
+	-- sun colors
+	local SunExtinctionColor = rgb(
+		self.SunAtmosphericExtinctionColor.R*255, -- SunExtinctionColorR
+		self.SunAtmosphericExtinctionColor.G*255, -- SunExtinctionColorG
+		self.SunAtmosphericExtinctionColor.B*255  -- SunExtinctionColorB
+	)
+	local SunExtinctionColorIntermediate = rgb(
+		self.SunAtmosphericExtinctionIntermediateColor.R*255, -- SunExtinctionColorIntermediateR
+		self.SunAtmosphericExtinctionIntermediateColor.G*255, -- SunExtinctionColorIntermediateG
+		self.SunAtmosphericExtinctionIntermediateColor.B*255  -- SunExtinctionColorIntermediateB
+	)
+	
+	local SunsetFOVTransparencyScale = 1 - math.clamp(
+		((workspace.CurrentCamera.FieldOfView - 5) / 5 + 1) 
+		* (self.HorizonElevationSunsetDifference ^ 3 / 10), 0, 1)
+	local H1 = 6*(2^(-x/500000))
+	
+	local HorizonElevationSunsetDifference10 = 0
+	if self.HorizonElevationSunsetDifference <= 0 then
+		HorizonElevationSunsetDifference10 = 0
+	elseif self.HorizonElevationSunsetDifference > 0 
+		and self.HorizonElevationSunsetDifference <= H1 then
+		HorizonElevationSunsetDifference10 = self.HorizonElevationSunsetDifference
+	elseif self.HorizonElevationSunsetDifference > H1 then
+		HorizonElevationSunsetDifference10 = H1
+	end
+	
+	local HorizonElevationSunsetDifference10Ratio = HorizonElevationSunsetDifference10 / H1
+	local HorizonElevationSunsetDifference10Ratio3 = (math.clamp(HorizonElevationSunsetDifference10, 0, 2) * 3) / H1
+	local HorizonElevationSunsetDifference10Ratio1_5 = (math.clamp(HorizonElevationSunsetDifference10, 0, 1) * 6) / H1
+
+	table.insert(ignore, meta.Atmosphere)
+	if CamZoomDistance <= 1.1 then -- Check if player is in first person.
+		table.insert(ignore,Character)
+	elseif CamZoomDistance > 1.1 then
+		ignore[Character] = nil
+	end
+
+	-- Checks if something is blocking the Sun
+	local Obstructed, hitPosition = workspace:FindPartOnRayWithIgnoreList(CamToSun,ignore)
+	meta.SunTexture.Position = UDim2.new(0,screenPosition.x,0,screenPosition.y)
+	meta.SunTexture2.Position = UDim2.new(0,screenPosition.x,0,screenPosition.y)
+	meta.SunTexture3.Position = UDim2.new(0,screenPosition.x,0,screenPosition.y)
+
+	if Obstructed then 
+		self.IsObstructed = true
+	else
+		self.IsObstructed = false
+	end
+
+	if isVisible then -- Converts the Sun's location in the sky to position coordinates of the shine gui.
+		meta.SunTexture.ImageTransparency = 1 
+		- math.clamp(
+			((2 - (2.6111111111111 * AltitudeSunTransparencyFadeRate))
+				* 30 * (HorizonElevationSunsetDifference10Ratio3 + 0.55
+				- AltitudeSunTransparencyFadeRate - SunsetFOVTransparencyScale)), 0, 1
+		)
+		
+		meta.SunTexture:TweenSize(
+			UDim2.new(
+				0, 100 + HorizonElevationSunsetDifference10Ratio * 900
+					*self.SunBrightness
+					*(-((Camera.FieldOfView-70)/200)+1),
+				
+				0, 100 + HorizonElevationSunsetDifference10Ratio 
+					* 900*self.SunBrightness
+					*(-((Camera.FieldOfView-70)/200)+1)
+			),
+			Enum.EasingDirection.Out,
+			Enum.EasingStyle.Quad,
+			0.1,
+			true
+		)
+		
+		meta.SunTexture2.ImageTransparency = 1 - math.clamp(
+			((2 - (2.6111111111111 * AltitudeSunTransparencyFadeRate))
+				* 30 * (HorizonElevationSunsetDifference10Ratio1_5 + 0.55
+					- AltitudeSunTransparencyFadeRate - SunsetFOVTransparencyScale)),
+			0,
+			1
+		)
+		
+		meta.SunTexture2:TweenSize(
+			UDim2.new(
+				0, ((2.5*Camera.ViewportSize.Y
+					*self.SunApparentDiameterRatio)
+					/Camera.FieldOfView)*self.SunBrightness,
+				0, ((2.5*Camera.ViewportSize.Y
+					*self.SunApparentDiameter/31.9)
+					/Camera.FieldOfView)*self.SunBrightness
+			),
+			Enum.EasingDirection.Out,
+			Enum.EasingStyle.Quad,
+			0.1,
+			true
+		)
+		meta.Sun3D.SunsetLight.Light.ImageTransparency = HorizonElevationSunsetDifference10Ratio
+		meta.Sun3D.Mesh.Scale = Vector3.new(
+			12.25,
+			10.5 + (1.75 * HorizonElevationSunsetDifference10Ratio),
+			12.25
+		) * self.SunApparentDiameterRatio
+		if self.IsObstructed == true then
+			meta.SunTexture:TweenSize(UDim2.new(0,-5,0,-5),Enum.EasingDirection.Out,Enum.EasingStyle.Quad,0.1,true)
+			meta.SunTexture2:TweenSize(UDim2.new(0,-5,0,-5),Enum.EasingDirection.Out,Enum.EasingStyle.Quad,0.1,true)
+		elseif self.SunElevation <= self.HorizonElevation then
+			meta.SunTexture:TweenSize(UDim2.new(0,-5,0,-5),Enum.EasingDirection.Out,Enum.EasingStyle.Quad,0.1,true)
+			meta.SunTexture2:TweenSize(UDim2.new(0,-5,0,-5),Enum.EasingDirection.Out,Enum.EasingStyle.Quad,0.1,true)
+		elseif self.HorizonElevation ~= self.HorizonElevation then
+			meta.SunTexture:TweenSize(UDim2.new(0,-5,0,-5),Enum.EasingDirection.Out,Enum.EasingStyle.Quad,0.1,true)
+			meta.SunTexture2:TweenSize(UDim2.new(0,-5,0,-5),Enum.EasingDirection.Out,Enum.EasingStyle.Quad,0.1,true)
+		end
+		meta.SunTexture3.Size = UDim2.new(0, meta.SunTexture.Size.X.Offset / 2, 0, meta.SunTexture.Size.Y.Offset / 2)
+		meta.SunTexture3.ImageColor3 = Color3.new(
+			meta.SunTexture.ImageColor3.R * 1.5,
+			meta.SunTexture.ImageColor3.G * 1.5,
+			meta.SunTexture.ImageColor3.B * 1.5
+		)
+		meta.SunTexture3.Position = meta.SunTexture.Position
+		meta.SunTexture3.Rotation = meta.SunTexture.Rotation
+		meta.SunTexture3.ImageTransparency = meta.SunTexture.ImageTransparency
+	else
+		meta.SunTexture:TweenSize(UDim2.new(0,-5,0,-5),Enum.EasingDirection.Out,Enum.EasingStyle.Quad,0.1,true)
+		meta.SunTexture2:TweenSize(UDim2.new(0,-5,0,-5),Enum.EasingDirection.Out,Enum.EasingStyle.Quad,0.1,true)
+		meta.SunTexture3.Size = meta.SunTexture.Size
+	end
+
+	if meta.SunTexture.Size.X.Offset <= 0 then -- To ensure the Sun is completely invisible when player is facing away from the Sun.
+		meta.SunTexture.Visible = false
+		meta.SunTexture2.Visible = false
+		meta.SunTexture3.Visible = false
+	else
+		meta.SunTexture.Visible = true
+		meta.SunTexture2.Visible = true
+		meta.SunTexture3.Visible = true
+	end
+
+	-- Sun Temperature
+	local TempValue = math.clamp(self.SunTemp, 2001, math.huge)
+	if not self.EnableSunsetScattering then
+		TempValue = self.SunTemp
+	end
+	local Temp = (TempValue + 1095) / 100
+	--[[if TempValue <= 0 then
+		self.SunColor = rgb(
+			255,
+			76,
+			0
+		)
+	elseif TempValue > 0 and TempValue <= 1000 then
+		self.SunColor = rgb(
+			255,
+			99.4708025861*math.log(Temp)-161.1195681661,
+			0
+		)
+	elseif TempValue > 1000 and TempValue <= 2000 then
+		self.SunColor = rgb(
+			255,
+			104.49216199393888*math.log(Temp-2)-0.44596950469579133*Temp-155.25485562709179,
+			0
+		)]]
+	if TempValue > 2000 and TempValue <= 6600 then
+		self.SunColor = rgb(
+			255,
+			104.49216199393888*math.log(Temp-2)-0.44596950469579133*Temp-155.25485562709179,
+			115.67994401066147*math.log(Temp-10)+0.8274096064007395*Temp-254.76935184120902
+		)
+	--[[elseif TempValue > 6600 and TempValue <= 40000 then
+		self.SunColor = rgb(
+			-40.25366309332127*math.log(Temp-55)+0.114206453784165*Temp+351.97690566805693,
+			-28.0852963507957*math.log(Temp-50)+0.07943456536662342*Temp+325.4494125711974,
+			255
+		)
+	elseif TempValue > 40000 then
+		self.SunColor = rgb(
+			162,
+			192,
+			255
+		)]]
+	end
+	
+	local H2 = (3*(2^(-x/500000)))
+	if self.EnableSunsetScattering then
+		local IntermediateColor = Color3.new(
+			math.clamp(((((self.SunColor.R-math.clamp(SunExtinctionColorIntermediate.R, 0, self.SunColor.R - 1))/(H2*(2^(-x/500000))))
+				*(math.clamp(HorizonElevationSunsetDifference10, H2, H2 * 2)-H2))+SunExtinctionColorIntermediate.R)/255, 0, 1),
+			math.clamp(((((self.SunColor.G-math.clamp(SunExtinctionColorIntermediate.G, 0, self.SunColor.G - 1))/(H2*(2^(-x/500000))))
+				*(math.clamp(HorizonElevationSunsetDifference10, H2, H2 * 2)-H2))+SunExtinctionColorIntermediate.G)/255, 0, 1),
+			math.clamp(((((self.SunColor.B-math.clamp(SunExtinctionColorIntermediate.B, 0, self.SunColor.B - 1))/(H2*(2^(-x/500000))))
+				*(math.clamp(HorizonElevationSunsetDifference10, H2, H2 * 2)-H2))+SunExtinctionColorIntermediate.B)/255, 0, 1)
+			)
+		meta.SunTexture.ImageColor3 = Color3.new(
+			(((((IntermediateColor.R*255)-SunExtinctionColor.R)/(6*(2^(-x/500000))))*HorizonElevationSunsetDifference10)+SunExtinctionColor.R)/255,
+			(((((IntermediateColor.G*255)-SunExtinctionColor.G)/(6*(2^(-x/500000))))*HorizonElevationSunsetDifference10)+SunExtinctionColor.G)/255,
+			(((((IntermediateColor.B*255)-SunExtinctionColor.B)/(6*(2^(-x/500000))))*HorizonElevationSunsetDifference10)+SunExtinctionColor.B)/255
+		)
+	else
+		meta.SunTexture.ImageColor3 = Color3.new(
+			(((self.SunColor.R-SunExtinctionColor.R)/(6*(2^(-x/500000)))*HorizonElevationSunsetDifference10)+SunExtinctionColor.R)/255,
+			((((self.SunColor.G-SunExtinctionColor.G)/(6*(2^(-x/500000))))*HorizonElevationSunsetDifference10)+SunExtinctionColor.G)/255,
+			((((self.SunColor.B-SunExtinctionColor.B)/(6*(2^(-x/500000))))*HorizonElevationSunsetDifference10)+SunExtinctionColor.B)/255
+		)
+	end
+	meta.SunTexture.Rotation = -(screenPosition.x-Camera.ViewportSize.X/2)/100 -- Sunshine rotation as a function of the screen's x-axis.
+
+	-- 3D SUNSET
+	if Lighting.ClockTime < 12 then
+		meta.Sun3D.SunsetLight.ExtentsOffsetWorldSpace = Vector3.new(5, 0, 0)
+	else
+		meta.Sun3D.SunsetLight.ExtentsOffsetWorldSpace = Vector3.new(-5, 0, 0)
+	end
+	
+	local AboveHorizon = self.HorizonElevationSunsetDifference > -2
+	if x > 5000 then
+		AboveHorizon = self.HorizonElevationSunsetDifference > 0
+	elseif x > 1000 and x <= 5000 then
+		AboveHorizon = self.HorizonElevationSunsetDifference > -0.5
+	end
+	if self.EnableSun then
+		if AboveHorizon and self.HorizonElevationSunsetDifference < H1 then
+			meta.Sun3D.Position = Camera.CFrame.Position
+			meta.Sun3D.Mesh.Offset = Vector3.new(70000, 70000, 70000) * self.SunDirectionV
+		else
+			meta.Sun3D.Position = Vector3.new(0, -200000, 0)
+			meta.Sun3D.Mesh.Offset = meta.Sun3D.Position
+		end
+		meta.Sun3D.SunsetLight.StudsOffsetWorldSpace = meta.Sun3D.Mesh.Offset
+		meta.Sun3D.SunsetLight.Brightness = math.clamp(400 - (x / 28), 40, 400)
+		meta.Sun3D.SunsetLight.Size = UDim2.new(
+			10000 * self.SunBrightness, 
+			0, math.clamp((-x / 16) + 10000, 4000, 10000) 
+				* self.SunBrightness, 0
+		)
+		meta.Sun3D.SunsetLight.Light.ImageColor3 = script.Customize.EnableSun.ThreeDimensionalSunAtmosphericExtinctionColor.Value
+	else
+		meta.Sun3D.Position = Camera.CFrame.Position - Vector3.new(0, 100000, 0)
+	end
+end
+
+function AtmoSphere:Update()
+	
+end
+
+return AtmoSphere
