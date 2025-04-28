@@ -4,38 +4,37 @@
 	Version 66
 ]]
 
-local rgb = Color3.fromRGB
 local AtmoSphere = {
 	-- Performance
 	MaxRefreshRate = 1/60,
 	LastUpdate = os.clock(),
 
 	-- Colors
-	AtmosphereColor = rgb(115, 180, 255),
-	AtmosphereReflectionColor = rgb(42, 133, 198),
-	AtmosphereSunsetColor = rgb(171, 213, 255),
-	AtmosphereExtinctionColor = rgb(255, 100, 0),
-	AstronomicalTwilightAtmosphericExtinctionColor = rgb(60, 60, 60),
-	InnerAtmosphericExtinctionColor = rgb(255, 85, 0),
-	NauticalInnerAtmosphericExtinctionColor = rgb(150, 125, 50),
-	NauticalTwilightAtmosphericExtinctionColor = rgb(255, 100, 50),
-	SunsideAtmosphericExtinctionColor = rgb(255, 20, 0),
-	BeltOfVenusColor = rgb(0, 13, 25),
-	DistantSurfaceColor = rgb(45, 118, 255),
+	AtmosphereColor = Color3.fromRGB(115, 180, 255),
+	AtmosphereReflectionColor = Color3.fromRGB(42, 133, 198),
+	AtmosphereSunsetColor = Color3.fromRGB(171, 213, 255),
+	AtmosphereExtinctionColor = Color3.fromRGB(255, 100, 0),
+	AstronomicalTwilightAtmosphericExtinctionColor = Color3.fromRGB(60, 60, 60),
+	InnerAtmosphericExtinctionColor = Color3.fromRGB(255, 85, 0),
+	NauticalInnerAtmosphericExtinctionColor = Color3.fromRGB(150, 125, 50),
+	NauticalTwilightAtmosphericExtinctionColor = Color3.fromRGB(255, 100, 50),
+	SunsideAtmosphericExtinctionColor = Color3.fromRGB(255, 20, 0),
+	BeltOfVenusColor = Color3.fromRGB(0, 13, 25),
+	DistantSurfaceColor = Color3.fromRGB(45, 118, 255),
 
 	-- Airglow
 	EnableAirglow = true,
-	AirglowColor = rgb(0, 255, 0),
+	AirglowColor = Color3.fromRGB(0, 255, 0),
 	AirglowTransparency = 0.93,
 
 	-- Lighting Changes
 	EnableEnvironmentalLightingChanges = true,
-	DaytimeSunlightColor = rgb(255, 255, 255),
+	DaytimeSunlightColor = Color3.fromRGB(255, 255, 255),
 	NightBrightness = 0,
 	OutdoorAmbientBrightnessDay = 128,
 	OutdoorAmbientBrightnessNight = 48,
 	SunlightBrightness = 5,
-	SunriseSunlightColor = rgb(255, 140, 20),
+	SunriseSunlightColor = Color3.fromRGB(255, 140, 20),
 
 	-- Moon
 	EnableMoon = true,
@@ -45,12 +44,12 @@ local AtmoSphere = {
 	-- Sun
 	EnableSun = true,
 	SunApparentDiameter = 31.983,
-	SunAtmosphericExtinctionColor = rgb(255, 140, 50),
-	SunAtmosphericExtinctionIntermediateColor = rgb(255, 200, 80),
+	SunAtmosphericExtinctionColor = Color3.fromRGB(255, 140, 50),
+	SunAtmosphericExtinctionIntermediateColor = Color3.fromRGB(255, 200, 80),
 	SunBrightness = 1,
 	SunTemp = 5505,
 	SunshineTexture = "rbxassetid://5192965045",
-	ThreeDimensionalSunAtmosphericExtinctionColor = rgb(255, 20, 0),
+	ThreeDimensionalSunAtmosphericExtinctionColor = Color3.fromRGB(255, 20, 0),
 	EnableSunsetScattering = true,
 
 	-- Planet
@@ -302,7 +301,7 @@ function AtmoSphere:Init()
 	
 	-- sun
 	self.SunBrightness = 5
-	self.SunColor = rgb(255, 255, 255)
+	self.SunColor = Color3.fromRGB(255, 255, 255)
 	self.SunOffset = Vector2.new(0, 0)
 
 	-- clocktime & axial tilt
@@ -428,15 +427,15 @@ function AtmoSphere:UpdateSun(deltaTime: number)
 	local CamZoomDistance = (Camera.Focus.Position - Camera.CFrame.Position).Magnitude
 	local HorizonElevationSunsetDifference = self.SunElevation-HorizonElevation
 	
-	local SunExtinctionColor = rgb(
+	local SunExtinctionColor = Color3.fromRGB(
 		self.SunAtmosphericExtinctionColor.R*255,
 		self.SunAtmosphericExtinctionColor.G*255,
 		self.SunAtmosphericExtinctionColor.B*255
 	)
-	local SunExtinctionColorIntermediate = rgb(
+	local SunExtinctionColorIntermediate = Color3.fromRGB(
 		self.SunAtmosphericExtinctionIntermediateColor.R*255,
 		self.SunAtmosphericExtinctionIntermediateColor.G*255,
-		self.SunAtmosphericExtinctionIntermediateColor.B
+		self.SunAtmosphericExtinctionIntermediateColor.B*255
 	)
 	
 	local SunsetFOVTransparencyScale = 1 - math.clamp(((Camera.FieldOfView - 5) / 5 + 1) 
@@ -468,9 +467,9 @@ function AtmoSphere:UpdateSun(deltaTime: number)
 
 	-- Checks if something is blocking the Sun
 	local Obstructed, hitPosition = workspace:FindPartOnRayWithIgnoreList(CamToSun, ignore)
-	meta.SunTexture.Position = UDim2.new(0,screenPosition.x,0,screenPosition.y)
-	meta.SunTexture2.Position = UDim2.new(0,screenPosition.x,0,screenPosition.y)
-	meta.SunTexture3.Position = UDim2.new(0,screenPosition.x,0,screenPosition.y)
+	meta.SunTexture.Position = UDim2.new(0,screenPosition.X,0,screenPosition.Y)
+	meta.SunTexture2.Position = UDim2.new(0,screenPosition.X,0,screenPosition.Y)
+	meta.SunTexture3.Position = UDim2.new(0,screenPosition.X,0,screenPosition.Y)
 
 	if Obstructed then 
 		self.IsObstructed = true
@@ -556,58 +555,70 @@ function AtmoSphere:UpdateSun(deltaTime: number)
 	end
 
 	-- Sun Temperature
-	local TempValue = math.clamp(script.Customize.EnableSun.SunTemp.Value, 2001, math.huge)
+	local TempValue = math.clamp(self.SunTemp, 2001, math.huge)
 	if not self.EnableSunsetScattering then
 		TempValue = self.SunTemp
 	end
 	local Temp = (TempValue + 1095) / 100
 	if TempValue <= 0 then
-		self.SunColor.R = 255
-		self.SunColor.G = 76
-		self.SunColor.B = 0
+		self.SunColor = Color3.fromRGB(
+			255,
+			76,
+			0
+		)
 	elseif TempValue > 0 and TempValue <= 1000 then
-		self.SunColor.R = 255
-		self.SunColor.G = 99.4708025861*math.log(Temp)-161.1195681661
-		self.SunColor.B = 0
+		self.SunColor = Color3.fromRGB(
+			255,
+			99.4708025861*math.log(Temp)-161.1195681661,
+			0
+		)
 	elseif TempValue > 1000 and TempValue <= 2000 then
-		self.SunColor.R = 255
-		self.SunColor.G = 104.49216199393888*math.log(Temp-2)-0.44596950469579133*Temp-155.25485562709179
-		self.SunColor.B = 0
+		self.SunColor = Color3.fromRGB(
+			255,
+			104.49216199393888*math.log(Temp-2)-0.44596950469579133*Temp-155.25485562709179,
+			0
+		)
 	elseif TempValue > 2000 and TempValue <= 6600 then
-		self.SunColor.R = 255
-		self.SunColor.G = 104.49216199393888*math.log(Temp-2)-0.44596950469579133*Temp-155.25485562709179
-		self.SunColor.B = 115.67994401066147*math.log(Temp-10)+0.8274096064007395*Temp-254.76935184120902
+		self.SunColor = Color3.fromRGB(
+			255,
+			104.49216199393888*math.log(Temp-2)-0.44596950469579133*Temp-155.25485562709179,
+			115.67994401066147*math.log(Temp-10)+0.8274096064007395*Temp-254.76935184120902
+		)
 	elseif TempValue > 6600 and TempValue <= 40000 then
-		self.SunColor.R = -40.25366309332127*math.log(Temp-55)+0.114206453784165*Temp+351.97690566805693
-		self.SunColor.G = -28.0852963507957*math.log(Temp-50)+0.07943456536662342*Temp+325.4494125711974
-		self.SunColor.B = 255
+		self.SunColor = Color3.fromRGB(
+			-40.25366309332127*math.log(Temp-55)+0.114206453784165*Temp+351.97690566805693,
+			-28.0852963507957*math.log(Temp-50)+0.07943456536662342*Temp+325.4494125711974,
+			115.67994401066147*math.log(Temp-10)+0.8274096064007395*Temp-254.76935184120902
+		)
 	elseif TempValue > 40000 then
-		self.SunColor.R = 162
-		self.SunColor.G = 192
-		self.SunColor.B = 255
+		self.SunColor = Color3.fromRGB(
+			162,
+			192,
+			255
+		)
 	end
 	
 	if self.EnableSunsetScattering then
 		local IntermediateColor = Color3.new(
-			math.clamp(((((self.SunColor.R-math.clamp(SunExtinctionColorIntermediate.R, 0, self.SunColor.R - 1))/(H2*(2^(-x/500000))))
-				*(math.clamp(HorizonElevationSunsetDifference10, H2, H2 * 2)-H2))+SunExtinctionColorIntermediate.R)/255, 0, 1),
+			math.clamp(((((self.SunColor.R-math.clamp(SunExtinctionColorIntermediate.R*255, 0, self.SunColor.R * 255 - 1))/(H2*(2^(-x/500000))))
+				*(math.clamp(HorizonElevationSunsetDifference10, H2, H2 * 2)-H2))+SunExtinctionColorIntermediate.R*255)/255, 0, 1),
 			
-			math.clamp(((((self.SunColor.G-math.clamp(SunExtinctionColorIntermediate.G, 0, self.SunColor.G - 1))/(H2*(2^(-x/500000))))
-				*(math.clamp(HorizonElevationSunsetDifference10, H2, H2 * 2)-H2))+SunExtinctionColorIntermediate.G)/255, 0, 1),
+			math.clamp(((((self.SunColor.G-math.clamp(SunExtinctionColorIntermediate.G*255, 0, self.SunColor.G * 255 - 1))/(H2*(2^(-x/500000))))
+				*(math.clamp(HorizonElevationSunsetDifference10, H2, H2 * 2)-H2))+SunExtinctionColorIntermediate.G*255)/255, 0, 1),
 			
-			math.clamp(((((self.SunColor.B-math.clamp(SunExtinctionColorIntermediate.B, 0, self.SunColor.B - 1))/(H2*(2^(-x/500000))))
-				*(math.clamp(HorizonElevationSunsetDifference10, H2, H2 * 2)-H2))+SunExtinctionColorIntermediate.B)/255, 0, 1)
+			math.clamp(((((self.SunColor.B-math.clamp(SunExtinctionColorIntermediate.B*255, 0, self.SunColor.B * 255 - 1))/(H2*(2^(-x/500000))))
+				*(math.clamp(HorizonElevationSunsetDifference10, H2, H2 * 2)-H2))+SunExtinctionColorIntermediate.B*255)/255, 0, 1)
 		)
 		meta.SunTexture.ImageColor3 = Color3.new(
-			(((((IntermediateColor.R*255)-SunExtinctionColor.R)/(6*(2^(-x/500000))))*HorizonElevationSunsetDifference10)+SunExtinctionColor.R)/255,
-			(((((IntermediateColor.G*255)-SunExtinctionColor.G)/(6*(2^(-x/500000))))*HorizonElevationSunsetDifference10)+SunExtinctionColor.G)/255,
-			(((((IntermediateColor.B*255)-SunExtinctionColor.B)/(6*(2^(-x/500000))))*HorizonElevationSunsetDifference10)+SunExtinctionColor.B)/255
+			(((((IntermediateColor.R*255)-SunExtinctionColor.R*255)/(6*(2^(-x/500000))))*HorizonElevationSunsetDifference10)+SunExtinctionColor.R*255)/255,
+			(((((IntermediateColor.G*255)-SunExtinctionColor.G*255)/(6*(2^(-x/500000))))*HorizonElevationSunsetDifference10)+SunExtinctionColor.G*255)/255,
+			(((((IntermediateColor.B*255)-SunExtinctionColor.B*255)/(6*(2^(-x/500000))))*HorizonElevationSunsetDifference10)+SunExtinctionColor.B*255)/255
 		)
 	else
 		meta.SunTexture.ImageColor3 = Color3.new(
-			(((self.SunColor.R-SunExtinctionColor.R)/(6*(2^(-x/500000)))*HorizonElevationSunsetDifference10)+SunExtinctionColor.R)/255,
-			((((self.SunColor.G-SunExtinctionColor.G)/(6*(2^(-x/500000))))*HorizonElevationSunsetDifference10)+SunExtinctionColor.G)/255,
-			((((self.SunColor.B-SunExtinctionColor.B)/(6*(2^(-x/500000))))*HorizonElevationSunsetDifference10)+SunExtinctionColor.B)/255
+			(((self.SunColor.R-SunExtinctionColor.R*255)/(6*(2^(-x/500000)))*HorizonElevationSunsetDifference10)+SunExtinctionColor.R*255)/255,
+			((((self.SunColor.G-SunExtinctionColor.G*255)/(6*(2^(-x/500000))))*HorizonElevationSunsetDifference10)+SunExtinctionColor.G*255)/255,
+			((((self.SunColor.B-SunExtinctionColor.B*255)/(6*(2^(-x/500000))))*HorizonElevationSunsetDifference10)+SunExtinctionColor.B*255)/255
 		)
 	end
 	meta.SunTexture.Rotation = -(screenPosition.x-Camera.ViewportSize.X/2)/100 -- Sunshine rotation as a function of the screen's x-axis.
